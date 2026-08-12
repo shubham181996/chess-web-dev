@@ -49,4 +49,38 @@ pipeline {
 		)
 	}
 	}
+	stage ('Production Release Complete'){
+	steps {
+		echo "Application Sucessfully Deployed by Jenkins"
+	}
+	}
+	post {
+	success {
+		emailtext(
+		to:'lnxstudy@gmail.com',
+		subject: 'Producation Deployment Successfully Done'
+		body: '''
+		Hello, Team,
+		
+		Production Deployment Done.
+
+		All Stages Worked.	
+		
+		'''
+	}
+	 failure {
+                emailtext(
+                to:'lnxstudy@gmail.com',
+                subject: 'Producation Deployment Failed !'
+                body: '''
+                Hello, Team,
+
+                Production Deployment Failed.
+
+                All Stages not Worked.
+
+                '''
+        }
+
+	}
 }
