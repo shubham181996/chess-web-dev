@@ -67,7 +67,7 @@ pipeline {
 		All Stages Worked.	
 		
 		'''
-	)
+		)
 	}
 
 	 failure {
@@ -82,9 +82,10 @@ pipeline {
                 All Stages not Worked.
 
                 '''
-        )
+        	)
 	}
 
+	}
 	}
 	}
 }
