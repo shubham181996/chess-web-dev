@@ -1,0 +1,385 @@
+############################This is Chess game code############################
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Chess Game</title>
+    <style>
+        :root {
+            --bg-color: #1e1e24;
+            --light-square: #f0d9b5;
+            --dark-square: #b58863;
+            --selected-square: #7b61ff;
+            --move-hint: rgba(20, 85, 30, 0.5);
+            --capture-hint: rgba(255, 0, 0, 0.4);
+            --panel-bg: #2b2b36;
+            --text-color: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            background-color: var(--panel-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .status-panel {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        #chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 65px);
+            grid-template-rows: repeat(8, 65px);
+            border: 4px solid #111;
+            border-radius: 4px;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .square {
+            width: 65px;
+            height: 65px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 42px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .square.light {
+            background-color: var(--light-square);
+        }
+
+        .square.dark {
+            background-color: var(--dark-square);
+        }
+
+        .square.selected {
+            background-color: var(--selected-square) !important;
+        }
+
+        .piece {
+            z-index: 2;
+            line-height: 1;
+        }
+
+        /* Valid Move Hints */
+        .square.possible-move::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: var(--move-hint);
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .square.possible-capture {
+            background-color: var(--capture-hint) !important;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            background-color: #4e4e68;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #636384;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="status-panel" id="status">Turn: White</div>
+        <div id="chessboard"></div>
+        <button onclick="resetGame()">Restart Game</button>
+    </div>
+
+    <script>
+        const boardElement = document.getElementById('chessboard');
+        const statusElement = document.getElementById('status');
+
+        // Chess Piece Unicode Symbols
+        const PIECES = {
+            'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
+            'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
+        };
+
+        // Initial Board Representation
+        // Uppercase = White, Lowercase = Black
+        const initialBoardState = [
+            ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+            ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+            ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+        ];
+
+        let board = [];
+        let currentTurn = 'white'; // 'white' or 'black'
+        let selectedSquare = null; // { row, col }
+        let validMoves = [];
+
+        function isWhite(piece) {
+            return piece && piece === piece.toUpperCase();
+        }
+
+        function isBlack(piece) {
+            return piece && piece === piece.toLowerCase();
+        }
+
+        function isSameTeam(piece1, piece2) {
+            if (!piece1 || !piece2) return false;
+            return (isWhite(piece1) && isWhite(piece2)) || (isBlack(piece1) && isBlack(piece2));
+        }
+
+        function initGame() {
+            board = JSON.parse(JSON.stringify(initialBoardState));
+            currentTurn = 'white';
+            selectedSquare = null;
+            validMoves = [];
+            updateStatus();
+            renderBoard();
+        }
+
+        function updateStatus() {
+            statusElement.innerText = `Turn: ${currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1)}`;
+        }
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    square.classList.add((r + c) % 2 === 0 ? 'light' : 'dark');
+                    square.dataset.row = r;
+                    square.dataset.col = c;
+
+                    // Highlight selected square
+                    if (selectedSquare && selectedSquare.row === r && selectedSquare.col === c) {
+                        square.classList.add('selected');
+                    }
+
+                    // Highlight move targets
+                    const isTarget = validMoves.some(m => m.row === r && m.col === c);
+                    if (isTarget) {
+                        if (board[r][c] !== '') {
+                            square.classList.add('possible-capture');
+                        } else {
+                            square.classList.add('possible-move');
+                        }
+                    }
+
+                    const piece = board[r][c];
+                    if (piece) {
+                        const pieceElement = document.createElement('span');
+                        pieceElement.classList.add('piece');
+                        pieceElement.innerText = PIECES[piece];
+                        square.appendChild(pieceElement);
+                    }
+
+                    square.addEventListener('click', () => handleSquareClick(r, c));
+                    boardElement.appendChild(square);
+                }
+            }
+        }
+
+        function handleSquareClick(row, col) {
+            const piece = board[row][col];
+
+            // If a piece is already selected and clicked target is a valid move, perform the move
+            if (selectedSquare) {
+                const isMoveValid = validMoves.some(m => m.row === row && m.col === col);
+                if (isMoveValid) {
+                    movePiece(selectedSquare.row, selectedSquare.col, row, col);
+                    selectedSquare = null;
+                    validMoves = [];
+                    renderBoard();
+                    return;
+                }
+            }
+
+            // Select a piece belonging to the active player
+            if (piece) {
+                if ((currentTurn === 'white' && isWhite(piece)) || (currentTurn === 'black' && isBlack(piece))) {
+                    selectedSquare = { row, col };
+                    validMoves = getValidMoves(row, col, piece);
+                    renderBoard();
+                    return;
+                }
+            }
+
+            // Deselect if clicking on an invalid square
+            selectedSquare = null;
+            validMoves = [];
+            renderBoard();
+        }
+
+        function movePiece(fromRow, fromCol, toRow, toCol) {
+            let piece = board[fromRow][fromCol];
+
+            // Handle Pawn Promotion (auto-promote to Queen for simplicity)
+            if (piece.toLowerCase() === 'p') {
+                if ((isWhite(piece) && toRow === 0) || (isBlack(piece) && toRow === 7)) {
+                    piece = isWhite(piece) ? 'Q' : 'q';
+                }
+            }
+
+            board[toRow][toCol] = piece;
+            board[fromRow][fromCol] = '';
+
+            // Switch Turns
+            currentTurn = currentTurn === 'white' ? 'black' : 'white';
+            updateStatus();
+        }
+
+        function getValidMoves(r, c, piece) {
+            const moves = [];
+            const type = piece.toLowerCase();
+            const white = isWhite(piece);
+
+            // Helper to add straight/diagonal ray moves (Rook, Bishop, Queen)
+            const addRayMoves = (directions) => {
+                directions.forEach(([dr, dc]) => {
+                    let nr = r + dr;
+                    let nc = c + dc;
+                    while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                        if (board[nr][nc] === '') {
+                            moves.push({ row: nr, col: nc });
+                        } else {
+                            if (!isSameTeam(piece, board[nr][nc])) {
+                                moves.push({ row: nr, col: nc });
+                            }
+                            break;
+                        }
+                        nr += dr;
+                        nc += dc;
+                    }
+                });
+            };
+
+            switch (type) {
+                case 'p': // Pawn
+                    const dir = white ? -1 : 1;
+                    const startRow = white ? 6 : 1;
+
+                    // Forward step
+                    if (r + dir >= 0 && r + dir < 8 && board[r + dir][c] === '') {
+                        moves.push({ row: r + dir, col: c });
+                        // Initial double step
+                        if (r === startRow && board[r + 2 * dir][c] === '') {
+                            moves.push({ row: r + 2 * dir, col: c });
+                        }
+                    }
+
+                    // Captures
+                    [-1, 1].forEach(dc => {
+                        const nr = r + dir;
+                        const nc = c + dc;
+                        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                            const target = board[nr][nc];
+                            if (target && !isSameTeam(piece, target)) {
+                                moves.push({ row: nr, col: nc });
+                            }
+                        }
+                    });
+                    break;
+
+                case 'n': // Knight
+                    const knightOffsets = [
+                        [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+                        [1, -2], [1, 2], [2, -1], [2, 1]
+                    ];
+                    knightOffsets.forEach(([dr, dc]) => {
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                            if (!isSameTeam(piece, board[nr][nc])) {
+                                moves.push({ row: nr, col: nc });
+                            }
+                        }
+                    });
+                    break;
+
+                case 'b': // Bishop
+                    addRayMoves([[-1, -1], [-1, 1], [1, -1], [1, 1]]);
+                    break;
+
+                case 'r': // Rook
+                    addRayMoves([[-1, 0], [1, 0], [0, -1], [0, 1]]);
+                    break;
+
+                case 'q': // Queen
+                    addRayMoves([
+                        [-1, -1], [-1, 1], [1, -1], [1, 1],
+                        [-1, 0], [1, 0], [0, -1], [0, 1]
+                    ]);
+                    break;
+
+                case 'k': // King
+                    const kingOffsets = [
+                        [-1, -1], [-1, 0], [-1, 1],
+                        [0, -1],           [0, 1],
+                        [1, -1],  [1, 0],  [1, 1]
+                    ];
+                    kingOffsets.forEach(([dr, dc]) => {
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                            if (!isSameTeam(piece, board[nr][nc])) {
+                                moves.push({ row: nr, col: nc });
+                            }
+                        }
+                    });
+                    break;
+            }
+
+            return moves;
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        // Start initial game state
+        initGame();
+    </script>
+</body>
+</html>
