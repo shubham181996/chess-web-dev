@@ -67,7 +67,9 @@ pipeline {
 		All Stages Worked.	
 		
 		'''
+	)
 	}
+
 	 failure {
                 emailtext(
                 to:'lnxstudy@gmail.com',
@@ -80,7 +82,9 @@ pipeline {
                 All Stages not Worked.
 
                 '''
-        }
+        )
+	}
 
+	}
 	}
 }
