@@ -1,10 +1,10 @@
 pipeline {
-	agnet any
+	agent any
 	stages {
 
 	stage ('checkout Source Code'){
 	steps {
-		checkout SCM
+		checkout scm
 	}
 	}
 	stage ('Deploy to testing server'){
@@ -15,7 +15,7 @@ pipeline {
 	
 		echo "Installing Apache"
 		sudo dnf install httpd -y
-		sudo systecmctl enable --now httpd
+		sudo systemctl enable --now httpd
 		sudo cp -rf index.html /var/www/html/
 		'''	
 	}
@@ -23,7 +23,7 @@ pipeline {
 	stage ('Technical Team Approval'){
 	steps {
 		input (
-		Message: 'Teachnical Team is Testing Sucessfully ?'
+		message: 'Teachnical Team is Testing Sucessfully ?'
 		ok: 'Approve Deployment'
 		)
 	}
@@ -36,7 +36,7 @@ pipeline {
 
                 echo "Installing Apache"
                 sudo dnf install httpd -y
-                sudo systecmctl enable --now httpd
+                sudo systemctl enable --now httpd
                 sudo cp -rf index.html /var/www/html/
                 '''
 	}
@@ -44,7 +44,7 @@ pipeline {
 	stage ('Manager Approval'){
 	steps {
 		input (
-		Message: 'Manager Approve Producation Release ?'
+		message: 'Manager Approve Producation Release ?'
 		ok: 'Release'
 		)
 	}
